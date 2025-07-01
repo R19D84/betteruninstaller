@@ -18,11 +18,27 @@ $appDisplayNameToRegistry = @{}
 $uninstallRegistryKeys = Get-ChildItem -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
 foreach ($regKey in $uninstallRegistryKeys) {
     $appProps = Get-ItemProperty -Path $regKey.PSPath
-    if ($appProps.DisplayName) {
-        [void]$appListBox.Items.Add($appProps.DisplayName)
-        $appDisplayNameToRegistry[$appProps.DisplayName] = $appProps
+    $displayName = $appProps.DisplayName
+    if ($displayName) {
+        Write-Host "Program: $displayName"
+        foreach ($property in $appProps.PSObject.Properties) {
+            $value = $property.Value
+            if ($value -is [string] -and ($value -match '^[A-Za-z]:\\' -or $value -match '^".*:\\')) {
+                Write-Host "  $($property.Name): $value"
+            }
+        }
+        Write-Host ""
     }
 }
+
+# $uninstallRegistryKeys = Get-ChildItem -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+# foreach ($regKey in $uninstallRegistryKeys) {
+#     $appProps = Get-ItemProperty -Path $regKey.PSPath
+#     if ($appProps.DisplayName) {
+#         [void]$appListBox.Items.Add($appProps.DisplayName)
+#         $appDisplayNameToRegistry[$appProps.DisplayName] = $appProps
+#     }
+# }
 
 $uninstallButton.Add_Click({
     $selectedApps = $appListBox.CheckedItems
