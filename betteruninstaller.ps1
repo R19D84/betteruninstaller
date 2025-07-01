@@ -28,6 +28,9 @@ foreach ($regKey in $uninstallRegistryKeys) {
             }
         }
         Write-Host ""
+
+        [void]$appListBox.Items.Add($displayName)
+        $appDisplayNameToRegistry[$displayName] = $appProps
     }
 }
 
