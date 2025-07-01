@@ -1,0 +1,61 @@
+Add-Type -AssemblyName System.Windows.Forms
+
+$mainForm = New-Object System.Windows.Forms.Form
+$mainForm.Text = "Better Uninstaller"
+$mainForm.Width = 400
+$mainForm.Height = 600
+
+$appListBox = New-Object System.Windows.Forms.CheckedListBox
+$appListBox.Dock = 'Fill'
+
+$uninstallButton = New-Object System.Windows.Forms.Button
+$uninstallButton.Text = "Uninstall"
+$uninstallButton.Dock = 'Bottom'
+
+# Mapping of display name to registry properties
+$appDisplayNameToRegistry = @{}
+
+$uninstallRegistryKeys = Get-ChildItem -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+foreach ($regKey in $uninstallRegistryKeys) {
+    $appProps = Get-ItemProperty -Path $regKey.PSPath
+    if ($appProps.DisplayName) {
+        [void]$appListBox.Items.Add($appProps.DisplayName)
+        $appDisplayNameToRegistry[$appProps.DisplayName] = $appProps
+    }
+}
+
+$uninstallButton.Add_Click({
+    $selectedApps = $appListBox.CheckedItems
+    foreach ($displayName in $selectedApps) {
+        $appProps = $appDisplayNameToRegistry[$displayName]
+        if ($appProps) {
+            $uninstallCommand = $null
+            if ($appProps.QuietUninstallString) {
+                $uninstallCommand = $appProps.QuietUninstallString
+            } elseif ($appProps.UninstallString) {
+                $uninstallCommand = $appProps.UninstallString
+            }
+            if ($uninstallCommand) {
+                # Use regex to split quoted path and arguments
+                if ($uninstallCommand -match '^\s*"(.*?)"\s*(.*)') {
+                    $exePath = $matches[1]
+                    $exeArgs = $matches[2]
+                } elseif ($uninstallCommand -match '^\s*([^\s]+)\s*(.*)') {
+                    $exePath = $matches[1]
+                    $exeArgs = $matches[2]
+                } else {
+                    $exePath = $uninstallCommand
+                    $exeArgs = ""
+                }
+                [System.Windows.Forms.MessageBox]::Show("Would run: $exePath $exeArgs", "Uninstall", [System.Windows.Forms.MessageBoxButtons]::OK)
+                Write-Host "Uninstalling: $($appProps.DisplayName)"
+                Write-Host "Start-Process -FilePath $exePath -ArgumentList $exeArgs -Wait -NoNewWindow"
+                #Start-Process -FilePath $exePath -ArgumentList $exeArgs -Wait -NoNewWindow
+            }
+        }
+    }
+})
+
+$mainForm.Controls.Add($appListBox)
+$mainForm.Controls.Add($uninstallButton)
+$mainForm.ShowDialog()
