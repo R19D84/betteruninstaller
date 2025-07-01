@@ -42,7 +42,7 @@ $uninstallButton.Add_Click({
             if (Get-Command -Name choco.exe -ErrorAction SilentlyContinue) {
                 [System.Windows.Forms.MessageBox]::Show("Would uninstall: $($appProps.DisplayName)", "Uninstall", [System.Windows.Forms.MessageBoxButtons]::OK)
                 Write-Host "Uninstalling: $($appProps.DisplayName)"
-                choco uninstall $($appProps.DisplayName) -y
+                Start-Process -FilePath "choco" -ArgumentList "uninstall `"$($appProps.DisplayName)`" -y" -Wait
             } else {
                 winget uninstall $($appProps.DisplayName) -e --silent
             }
