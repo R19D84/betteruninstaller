@@ -39,49 +39,34 @@ $uninstallButton.Add_Click({
     foreach ($displayName in $selectedApps) {
         $appProps = $appDisplayNameToRegistry[$displayName]
         if ($appProps) {
-            $uninstallCommand = $null
-            if ($appProps.QuietUninstallString) {
-                $uninstallCommand = $appProps.QuietUninstallString
-            } elseif ($appProps.UninstallString) {
-                $uninstallCommand = $appProps.UninstallString
-            }
-            if ($uninstallCommand) {
-                # Use regex to split quoted path and arguments
-                if ($uninstallCommand -match '^\s*"(.*?)"\s*(.*)') {
-                    $exePath = $matches[1]
-                    $exeArgs = $matches[2]
-                } elseif ($uninstallCommand -match '^\s*([^\s]+)\s*(.*)') {
-                    $exePath = $matches[1]
-                    $exeArgs = $matches[2]
-                } else {
-                    $exePath = $uninstallCommand
-                    $exeArgs = ""
-                }
-                [System.Windows.Forms.MessageBox]::Show("Would run: $exePath $exeArgs", "Uninstall", [System.Windows.Forms.MessageBoxButtons]::OK)
+            if (Get-Command -Name choco.exe -ErrorAction SilentlyContinue) {
+                [System.Windows.Forms.MessageBox]::Show("Would uninstall: $($appProps.DisplayName)", "Uninstall", [System.Windows.Forms.MessageBoxButtons]::OK)
                 Write-Host "Uninstalling: $($appProps.DisplayName)"
-                Write-Host "Start-Process -FilePath $exePath -ArgumentList $exeArgs -Wait -NoNewWindow"
-                #Start-Process -FilePath $exePath -ArgumentList $exeArgs -Wait -NoNewWindow
+                choco uninstall $($appProps.DisplayName) -y
+            } else {
+                winget uninstall $($appProps.DisplayName) -e --silent
+            }
 
-                $searchFolders = @(
+            $searchFolders = @(
                 "C:\Program Files",
                 "C:\Program Files (x86)",
+                "C:\Program Data",
                 "$env:USERPROFILE\AppData\Local",
                 "$env:USERPROFILE\AppData\Roaming",
                 "$env:USERPROFILE\AppData\Local\Temp"
-                )
-                $displayName = $appProps.DisplayName
-                foreach ($folder in $searchFolders) {
-                    if (Test-Path $folder) {
-                        $matches = Get-ChildItem -Path $folder -Directory -ErrorAction SilentlyContinue | Where-Object {
-                            $_.Name -like "*$displayName*"
-                        }
-                        foreach ($match in $matches) {
-                            $msg = "Delete folder and all contents:`n$($match.FullName)?"
-                            $result = [System.Windows.Forms.MessageBox]::Show($msg, "Cleanup", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-                            if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
-                                Remove-Item -Path $match.FullName -Recurse -Force
-                                Write-Host "Deleted: $($match.FullName)"
-                            }
+            )
+            $displayName = $appProps.DisplayName
+            foreach ($folder in $searchFolders) {
+                if (Test-Path $folder) {
+                    $matches = Get-ChildItem -Path $folder -Directory -ErrorAction SilentlyContinue | Where-Object {
+                        $_.Name -like "*$displayName*"
+                    }
+                    foreach ($match in $matches) {
+                        $msg = "Delete folder and all contents:`n$($match.FullName)?"
+                        $result = [System.Windows.Forms.MessageBox]::Show($msg, "Cleanup", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+                            Remove-Item -Path $match.FullName -Recurse -Force
+                            Write-Host "Deleted: $($match.FullName)"
                         }
                     }
                 }
