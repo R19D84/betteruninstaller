@@ -34,15 +34,6 @@ foreach ($regKey in $uninstallRegistryKeys) {
     }
 }
 
-# $uninstallRegistryKeys = Get-ChildItem -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
-# foreach ($regKey in $uninstallRegistryKeys) {
-#     $appProps = Get-ItemProperty -Path $regKey.PSPath
-#     if ($appProps.DisplayName) {
-#         [void]$appListBox.Items.Add($appProps.DisplayName)
-#         $appDisplayNameToRegistry[$appProps.DisplayName] = $appProps
-#     }
-# }
-
 $uninstallButton.Add_Click({
     $selectedApps = $appListBox.CheckedItems
     foreach ($displayName in $selectedApps) {
@@ -70,6 +61,30 @@ $uninstallButton.Add_Click({
                 Write-Host "Uninstalling: $($appProps.DisplayName)"
                 Write-Host "Start-Process -FilePath $exePath -ArgumentList $exeArgs -Wait -NoNewWindow"
                 #Start-Process -FilePath $exePath -ArgumentList $exeArgs -Wait -NoNewWindow
+
+                $searchFolders = @(
+                "C:\Program Files",
+                "C:\Program Files (x86)",
+                "$env:USERPROFILE\AppData\Local",
+                "$env:USERPROFILE\AppData\Roaming",
+                "$env:USERPROFILE\AppData\Local\Temp"
+                )
+                $displayName = $appProps.DisplayName
+                foreach ($folder in $searchFolders) {
+                    if (Test-Path $folder) {
+                        $matches = Get-ChildItem -Path $folder -Directory -ErrorAction SilentlyContinue | Where-Object {
+                            $_.Name -like "*$displayName*"
+                        }
+                        foreach ($match in $matches) {
+                            $msg = "Delete folder and all contents:`n$($match.FullName)?"
+                            $result = [System.Windows.Forms.MessageBox]::Show($msg, "Cleanup", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+                            if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+                                Remove-Item -Path $match.FullName -Recurse -Force
+                                Write-Host "Deleted: $($match.FullName)"
+                            }
+                        }
+                    }
+                }
             }
         }
     }
